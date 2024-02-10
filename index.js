@@ -39,10 +39,12 @@ client.on('messageCreate', async message => {
     if (action === "add") {
         // Validate and add birthday
         addBirthday(message, arg);
-    } else if (action === "remove") {
+    }
+
+    else if (action === "remove") {
         // Remove birthday
         removeBirthday(message);
-    } 
+    }
 
     else if (action == "check") {
         // Check the user's birthday
@@ -93,11 +95,21 @@ client.on('messageCreate', async message => {
             .setDescription(`<@${user.id}> (${user.username}) is **${age}** years old.`);
         message.channel.send({ embeds: [embed] });
     }
+
     else if (action == "list") {
-        Promise.all(Object.entries(birthdays).map(async ([userId, userData]) => {
+        // Map each birthday to include the next timestamp and userId for sorting
+        const birthdaysWithTimestamps = Object.entries(birthdays).map(([userId, userData]) => {
+            const [day, month, year] = userData.date.split('/').map(num => parseInt(num));
+            const nextBirthdayTimestamp = getNextBirthdayTimestamp(day, month, year);
+            return { userId, userData, nextBirthdayTimestamp };
+        });
+
+        // Sort the mapped entries by the nextBirthdayTimestamp
+        const sortedBirthdays = birthdaysWithTimestamps.sort((a, b) => a.nextBirthdayTimestamp - b.nextBirthdayTimestamp);
+
+        // Generate descriptions after sorting
+        Promise.all(sortedBirthdays.map(async ({ userId, userData, nextBirthdayTimestamp }) => {
             try {
-                const [day, month, year] = userData.date.split('/').map(num => parseInt(num));
-                const nextBirthdayTimestamp = getNextBirthdayTimestamp(day, month, year);
                 // Format the message to include the Discord relative time format
                 return `- <@${userId}> **<t:${nextBirthdayTimestamp}:F>** (<t:${nextBirthdayTimestamp}:R>)`;
             } catch (error) {
@@ -112,6 +124,7 @@ client.on('messageCreate', async message => {
             message.channel.send({ embeds: [embed] });
         });
     }
+
 
     else if (action == "help") {
         const embed = new EmbedBuilder()
